@@ -1,0 +1,3256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto DCA Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        /* ===================================
+           GLOBAL RESET & BASE STYLES
+           Universal styles applied to all elements
+           =================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* BODY - Main page background and text settings */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; /* CHANGE: Main font */
+            background: #f5f5f5;    /* CHANGE: Page background color (light gray) */
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 13px;        /* CHANGE: Base font size for entire app */
+        }
+        
+        /* ===================================
+           MAIN CONTAINER
+           The white box that holds everything
+           =================================== */
+        .container {
+            max-width: 1200px;       /* CHANGE: Maximum width of the app */
+            margin: 0 auto;
+            background: white;       /* CHANGE: Container background color */
+            border-radius: 8px;      /* CHANGE: Rounded corners of container */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* CHANGE: Container shadow */
+            overflow: hidden;
+        }
+        
+        /* ===================================
+           HEADER SECTION
+           Blue bar at the top with app title
+           
+           TO MODIFY HEADER:
+           - Background color: .header (background)
+           - Title text: .header h1 (font-size, font-weight, color)
+           - Subtitle text: .header p (font-size, opacity)
+           =================================== */
+        .header {
+            background: #00001A;  /* CHANGE: Header background color (currently blue) */
+            color: white;            /* CHANGE: Header text color */
+            padding: 20px 25px;      /* CHANGE: Header padding (spacing) */
+            border-bottom: 1px solid #1d4ed8; /* CHANGE: Bottom border color */
+        }
+        
+        .header h1 {
+            font-size: 1.5em;        /* CHANGE: Main title size */
+            margin-bottom: 4px;
+            font-weight: 600;        /* CHANGE: Title boldness */
+        }
+        
+        .header p {
+            font-size: 0.85em;       /* CHANGE: Subtitle size */
+            opacity: 0.85;           /* CHANGE: Subtitle transparency */
+        }
+        
+        /* ===================================
+           NAVIGATION TABS
+           Horizontal tabs: Portfolio | What-If | Add | Transactions | Detailed | Settings
+           
+           TO MODIFY TABS:
+           - Tab colors: .tab (background, color)
+           - Hover effect: .tab:hover (background, color)
+           - Active tab: .tab.active (background, color, border-bottom)
+           - Tab size: .tab (padding, font-size)
+           =================================== */
+        .tabs {
+            display: flex;
+            background: #fafafa;         /* CHANGE: Tab bar background (light gray) */
+            border-bottom: 1px solid #e5e5e5; /* CHANGE: Border below tabs */
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;               /* CHANGE: Tab spacing */
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9em;            /* CHANGE: Tab text size */
+            transition: all 0.2s;
+            border: none;
+            background: none;
+            color: #666;                 /* CHANGE: Inactive tab text color */
+        }
+        
+        .tab:hover {
+            background: #f0f0f0;         /* CHANGE: Tab hover background */
+            color: #333;                 /* CHANGE: Tab hover text color */
+        }
+        
+        .tab.active {
+            background: white;           /* CHANGE: Active tab background */
+            color: #2563eb;              /* CHANGE: Active tab text color (blue) */
+            border-bottom: 2px solid #2563eb; /* CHANGE: Active tab bottom border (blue line) */
+        }
+        
+        /* ===================================
+           TAB CONTENT CONTAINERS
+           =================================== */
+        .tab-content {
+            display: none;
+            padding: 15px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* ===================================
+           SECTION CONTAINERS
+           =================================== */
+        .section {
+            margin-bottom: 15px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e5e5e5;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        /* ===================================
+           FORM ELEMENTS
+           =================================== */
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #555;
+            font-size: 0.85em;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #d4d4d4;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: border 0.2s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        
+        /* Autocomplete styling for currency input */
+        input[list] {
+            position: relative;
+        }
+        
+        input[list]::-webkit-calendar-picker-indicator {
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        
+        input[list]:focus::-webkit-calendar-picker-indicator {
+            opacity: 1;
+        }
+        
+        /* Form row for responsive grid layout */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        
+        /* ===================================
+           BUTTONS - All button styles and states
+           
+           TO MODIFY BUTTON COLORS/STYLES:
+           - Primary buttons (blue): .btn-primary (background, hover)
+           - Delete buttons (red): .btn-danger (background, hover)
+           - Secondary buttons (gray): .btn-secondary (background, hover)
+           - Edit button: .edit-btn (background, hover, text color)
+           - Delete button in tables: .delete-btn (background, hover)
+           - Expand button: .expand-btn (background, hover)
+           =================================== */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        /* PRIMARY BUTTONS - Blue buttons (Fetch Prices, Add Transaction, Save) */
+        .btn-primary {
+            background: #2563eb;  /* CHANGE: Primary button color */
+            color: white;         /* CHANGE: Primary button text color */
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;  /* CHANGE: Primary button hover color */
+        }
+        
+        /* DANGER BUTTONS - Red buttons (Delete All, Clear Data) */
+        .btn-danger {
+            background: #f65b6d;  /* CHANGE: Danger button color */
+            color: white;         /* CHANGE: Danger button text color */
+        }
+        
+        .btn-danger:hover {
+            background: #b91c1c;  /* CHANGE: Danger button hover color */
+        }
+        
+        /* SECONDARY BUTTONS - Gray buttons (Clear Prices, Sort, Import/Export) */
+        .btn-secondary {
+            background: #71717a;  /* CHANGE: Secondary button color */
+            color: white;         /* CHANGE: Secondary button text color */
+        }
+        
+        .btn-secondary:hover {
+            background: #52525b;  /* CHANGE: Secondary button hover color */
+        }
+        
+        /* ===================================
+           TABLES (Transaction lists)
+           =================================== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.85em;
+        }
+        
+        thead {
+            background: #fafafa;
+            border-top: 1px solid #e5e5e5;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        th {
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        tbody tr:hover {
+            background: #fafafa;
+        }
+        
+        /* ===================================
+           Total Profit/Loss in Portfolio summary & P/L column in detailed view tab under individual transaction section
+           Colors for positive/negative values throughout the app
+           =================================== */
+        .positive {
+            color: #5CFF5C;          /* CHANGE: Positive P/L color */
+            font-weight: 600;
+        }
+        
+        .negative {
+            color: #F53838;          /* CHANGE: Negative P/L color */
+            font-weight: 600;
+        }
+        
+        /* ===================================
+           PORTFOLIO SUMMARY CARD
+           The blue card showing Total Invested, Current Value, Total Profit/Loss
+           
+           TO MODIFY SUMMARY CARD:
+           - Background color: .portfolio-card (background)
+           - Text color: .portfolio-card (color)
+           - Stat labels: .stat-label (font-size, opacity)
+           - Stat values: .stat-value (font-size, font-weight)
+           =================================== */
+        .portfolio-card {
+            background: #00001A; /*DodgerBlue;  /* CHANGE: Portfolio summary card background (blue) */
+            color: white;            /* CHANGE: Portfolio summary card text color */
+            padding: 15px;           /* CHANGE: Card padding (spacing) */
+            border-radius: 6px;      /* CHANGE: Card corner roundness */
+            margin-bottom: 15px;
+        }
+        
+        .portfolio-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .stat-group {
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 0.75em;       /* CHANGE: Label text size (Total Invested, etc.) */
+            opacity: 0.85;
+            margin-bottom: 4px;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;        /* CHANGE: Value text size ($1000, etc.) */
+            font-weight: 600;        /* CHANGE: Value boldness */
+        }
+        
+        /* ===================================
+           CURRENCY CARDS - Individual coin display (BTC, ETH, etc.)
+           White cards below the portfolio summary showing each coin's details
+           
+           TO MODIFY CURRENCY CARDS:
+           - Card background: .currency-card (background, border)
+           - Coin name: .currency-name (font-size, font-weight, color)
+           - Stat labels: .currency-stat-label (font-size, color)
+           - Stat values: .currency-stat-value (font-size, font-weight, color)
+           - Expand button: .expand-btn (background, hover)
+           =================================== */
+        .currency-card {
+            background: white;           /* CHANGE: Currency card background */
+            border: 1px solid #e5e5e5;   /* CHANGE: Currency card border */
+            border-radius: 6px;          /* CHANGE: Currency card corner roundness */
+            padding: 15px;               /* CHANGE: Currency card padding */
+            margin-bottom: 12px;
+        }
+        
+        .currency-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e5e5; /* CHANGE: Border below coin name */
+        }
+        
+        .currency-name {
+            font-size: 1.2em;            /* CHANGE: Coin name size (BTC, ETH, etc.) */
+            font-weight: 600;            /* CHANGE: Coin name boldness */
+            color: #333;                 /* CHANGE: Coin name color */
+        }
+        
+        /* EXPAND BUTTON - "View Transactions" button in currency cards */
+        .expand-btn {
+            padding: 6px 12px;           /* CHANGE: Button size */
+            background: #f0f0f0;         /* CHANGE: Expand button color (gray) */
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;            /* CHANGE: Button text size */
+            transition: all 0.2s;
+        }
+        
+        .expand-btn:hover {
+            background: #e5e5e5;         /* CHANGE: Expand button hover color */
+        }
+        
+        /* Stats grid inside currency cards (Total Coins, Invested, Avg Buy Price, etc.) */
+        .currency-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        
+        .currency-stat {
+            text-align: center;
+        }
+        
+        .currency-stat-label {
+            font-size: 0.75em;           /* CHANGE: Stat label size */
+            color: #666;                 /* CHANGE: Stat label color */
+            margin-bottom: 4px;
+        }
+        
+        .currency-stat-value {
+            font-size: 1em;              /* CHANGE: Stat value size */
+            font-weight: 600;            /* CHANGE: Stat value boldness */
+            color: #333;                 /* CHANGE: Stat value color */
+        }
+        
+        /* ===================================
+           TRANSACTION DETAILS (Expandable section in portfolio)
+           =================================== */
+        .transaction-details {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e5e5;
+        }
+        
+        .transaction-details.show {
+            display: block;
+        }
+        
+        /* ===================================
+           EDIT/DELETE ACTION BUTTONS
+           Small buttons in transaction tables (Transaction History tab)
+           
+           TO MODIFY EDIT/DELETE BUTTONS:
+           - Edit button color: .edit-btn (background)
+           - Edit button hover: .edit-btn:hover (background)
+           - Delete button color: .delete-btn (background)
+           - Delete button hover: .delete-btn:hover (background)
+           - Button size: .edit-btn, .delete-btn (padding, font-size)
+           =================================== */
+        .edit-btn {
+            padding: 4px 10px;           /* CHANGE: Edit button size */
+            margin-right: 5px;
+            background: DodgerBlue;      /* CHANGE: Edit button color (blue) */
+            color: white;                /* CHANGE: Edit button text color */
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;            /* CHANGE: Edit button text size */
+        }
+        
+        .edit-btn:hover {
+            background: #1d4ed8;         /* CHANGE: Edit button hover color (darker blue) */
+        }
+        
+        .delete-btn {
+            padding: 4px 10px;           /* CHANGE: Delete button size */
+            background: #f65b6d;         /* CHANGE: Delete button color (red) */
+            color: white;                /* CHANGE: Delete button text color */
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;            /* CHANGE: Delete button text size */
+        }
+        
+        .delete-btn:hover {
+            background: #b91c1c;         /* CHANGE: Delete button hover color (darker red) */
+        }
+        
+        /* ===================================
+           MODAL (Edit transaction popup)
+           =================================== */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.3em;
+            color: #333;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        .close-btn:hover {
+            color: #333;
+        }
+        
+        /* ===================================
+           TOAST NOTIFICATIONS
+           =================================== */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 2000;
+            display: none;
+            font-size: 0.9em;
+        }
+        
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .toast.error {
+            background: #dc2626;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* ===================================
+           SEARCH BAR STYLING
+           =================================== */
+        .search-container {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #d4d4d4;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: border 0.2s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        
+        /* ===================================
+           BULK DELETE CONTROLS
+           =================================== */
+        .bulk-actions {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .bulk-actions label {
+            font-size: 0.85em;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        
+        .bulk-actions input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+        
+        .selected-count {
+            font-size: 0.85em;
+            color: #374151;
+            font-weight: 500;
+            margin-left: auto;
+        }
+        
+        /* Checkbox column styling in transaction table */
+        .transaction-table td:first-child,
+        .transaction-table th:first-child {
+            width: 30px;
+            text-align: center;
+        }
+        
+        .transaction-table input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* ===================================
+           UTILITY CLASSES - Reusable layout and spacing classes
+           Used throughout the app to avoid inline styles
+           =================================== */
+        
+        /* FLEXBOX UTILITIES */
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .flex-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* HEADING UTILITIES - For section headers */
+        .section-header {
+            margin: 0;
+            border: none;
+            padding: 0;
+        }
+        
+        .subsection-header {
+            margin-bottom: 10px;
+        }
+        
+        .help-text {
+            color: #666;
+            margin: 5px 0 0 0;
+            font-size: 0.9em;
+        }
+        
+        /* FILE INPUT HIDDEN */
+        .hidden-input {
+            display: none;
+        }
+        
+        /* CACHE INFO */
+        .cache-info {
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        /* ===================================
+           HELP/INFO PAGE STYLES
+           Styling for the Help tab content
+           =================================== */
+        .help-content {
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        .help-content h3 {
+            color: #2563eb;              /* CHANGE: Help section heading color */
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .help-content h4 {
+            color: #333;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+        
+        .help-content p {
+            margin-bottom: 15px;
+        }
+        
+        .help-content ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .help-content li {
+            margin-bottom: 8px;
+        }
+        
+        .help-content li.compact {
+            margin-bottom: 5px;
+        }
+        
+        /* Disclaimer box in Help tab */
+        .disclaimer-box {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f0f9ff;         /* CHANGE: Disclaimer box background (light blue) */
+            border-left: 4px solid #2563eb; /* CHANGE: Disclaimer box left border (blue) */
+            border-radius: 4px;
+        }
+        
+        .disclaimer-box p {
+            margin: 0;
+            color: #1e40af;              /* CHANGE: Disclaimer text color (dark blue) */
+            font-weight: 500;
+        }
+        
+        /* ===================================
+           CURRENT PRICE INPUT FIELD
+           Blue-bordered input in portfolio currency cards
+           =================================== */
+        .price-input {
+            width: 100%;
+            text-align: center;
+            border: 1px solid #2563eb;   /* CHANGE: Current price input border (blue) */
+            border-radius: 3px;
+            padding: 4px;
+            font-size: 0.9em;
+        }
+        
+        /* ===================================
+           WHAT-IF PRICE INPUT FIELD
+           Green-bordered input in what-if currency cards
+           =================================== */
+        .whatif-price-input {
+            width: 100%;
+            text-align: center;
+            border: 1px solid #059669;   /* CHANGE: What-if price input border (green) */
+            border-radius: 3px;
+            padding: 4px;
+            font-size: 0.9em;
+        }
+        
+        /* ===================================
+           DETAILED VIEW PRICE INPUT
+           Price input in detailed view tab
+           =================================== */
+        .detailed-price-input {
+            width: 100%;
+            text-align: center;
+            border: 1px solid #2563eb;
+            border-radius: 3px;
+            padding: 4px;
+            font-size: 0.9em;
+        }
+        
+        /* ===================================
+           P/L COLOR CLASSES
+           Dynamic color classes applied via JavaScript
+           =================================== */
+        .pl-positive {
+            color: #10b981;              /* CHANGE: Positive P/L color in cards (green) */
+        }
+        
+        .pl-negative {
+            color: #ef4444;              /* CHANGE: Negative P/L color in cards (red) */
+        }
+        
+        .pl-zero {
+            color: #000;                 /* CHANGE: Zero P/L color in cards (black) */
+        }
+        
+        /* Price fetch status colors */
+        .price-fetched {
+            color: #059669;              /* CHANGE: Fetched price color (green) */
+        }
+        
+        .price-not-fetched {
+            color: #666;                 /* CHANGE: Not fetched price color (gray) */
+        }
+        
+        /* ===================================
+           ACTION BUTTONS CONTAINER (Settings page)
+           =================================== */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+        }
+        
+        /* ===================================
+           REFRESH STATUS (Price fetch indicator)
+           =================================== */
+        .refresh-status {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        /* ===================================
+           CHART CONTAINER (Detailed view chart)
+           =================================== */
+        .chart-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 6px;
+            border: 1px solid #e5e5e5;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>💰 Crypto DCA Tracker</h1>
+            <p>Track your Dollar Cost Averaging investments with live prices</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(event, 'portfolioTab')">📊 Portfolio</button>
+            <button class="tab" onclick="switchTab(event, 'whatIfTab')">🎯 What-If Analysis</button>
+            <button class="tab" onclick="switchTab(event, 'addTab')">➕ Add/Modify Transaction</button>
+            <button class="tab" onclick="switchTab(event, 'detailsTab')">🔍 Detailed View</button>
+            <button class="tab" onclick="switchTab(event, 'settingsTab')">⚙️ Settings</button>
+            <button class="tab" onclick="switchTab(event, 'aboutTab')">ℹ️ About</button>
+        </div>
+        
+        <div id="portfolioTab" class="tab-content active">
+            <div class="section">
+                <div class="flex-between">
+                    <h2 class="section-header">Current Portfolio</h2>
+                    <div class="flex-row">
+                        <button id="refreshBtn" class="btn btn-primary" onclick="fetchAllPrices()">🔄 Manual Price Fetching</button>
+                        <div id="autoFetchBtn" class="btn btn-secondary" onclick="toggleAutoFetch()" style="display: flex; align-items: center; gap: 3px; padding: 6px 6px; cursor: pointer;">
+                            <span id="autoFetchLabel">▶️ Start Auto-Fetch</span>
+                            <div style="display: flex; align-items: center; gap: 2px; font-size: 0.75em; color: yellow;">
+                                <span>Interval:</span>
+                                <input type="number" id="autoFetchDuration" min="1" value="5" onclick="event.stopPropagation()" style="width: 35px; padding: 2px 4px; border: 1px solid #d4d4d4; border-radius: 3px; text-align: center; font-size: 1em;">
+                                <span>min</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="clearFetchedPrices()">🗑️ Clear Fetched Prices</button>
+                        <button id="portfolioSortAlpha" class="btn btn-secondary" onclick="setPortfolioSort('alpha')" style="background: #10b981; color: white;">📊 Alpha</button>
+                        <button id="portfolioSortHighLow" class="btn btn-secondary" onclick="setPortfolioSort('highToLow')">📈 High→Low</button>
+                        <button id="portfolioSortLowHigh" class="btn btn-secondary" onclick="setPortfolioSort('lowToHigh')">📉 Low→High</button>
+                    </div>
+                </div>
+                
+                <div class="portfolio-card">
+                    <h3 class="subsection-header">Portfolio Summary</h3>
+                    <div class="portfolio-stats">
+                        <div class="stat-group">
+                            <div class="stat-label">Total Invested</div>
+                            <div class="stat-value" id="totalInvested">$0.00</div>
+                        </div>
+                        <div class="stat-group">
+                            <div class="stat-label">Current Value</div>
+                            <div class="stat-value" id="currentValue">$0.00</div>
+                        </div>
+                        <div class="stat-group">
+                            <div class="stat-label">Total Profit/Loss</div>
+                            <div class="stat-value" id="totalProfitLoss">$0.00 (0.00%)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="currencyList"></div>
+            </div>
+        </div>
+        
+        <div id="whatIfTab" class="tab-content">
+            <div class="section">
+                <div class="flex-between">
+                    <div>
+                        <h2 class="section-header">What-If Analysis</h2>
+                        <p class="help-text">
+                            Adjust prices to see potential outcomes
+                        </p>
+                    </div>
+                    <div class="flex-row">
+                        <button class="btn btn-secondary" onclick="clearWhatIfPrices()">🗑️ Clear Fetched Prices</button>
+                        <button id="whatIfSortAlpha" class="btn btn-secondary" onclick="setWhatIfSort('alpha')" style="background: #10b981; color: white;">📊 Alpha</button>
+                        <button id="whatIfSortHighLow" class="btn btn-secondary" onclick="setWhatIfSort('highToLow')">📈 High→Low</button>
+                        <button id="whatIfSortLowHigh" class="btn btn-secondary" onclick="setWhatIfSort('lowToHigh')">📉 Low→High</button>
+                    </div>
+                </div>
+                
+                <div class="portfolio-card">
+                    <h3 class="subsection-header">Scenario Summary</h3>
+                    <div class="portfolio-stats">
+                        <div class="stat-group">
+                            <div class="stat-label">Total Invested</div>
+                            <div class="stat-value" id="whatifTotalInvested">$0.00</div>
+                        </div>
+                        <div class="stat-group">
+                            <div class="stat-label">Scenario Value</div>
+                            <div class="stat-value" id="whatifTotalValue">$0.00</div>
+                        </div>
+                        <div class="stat-group">
+                            <div class="stat-label">Potential P/L</div>
+                            <div class="stat-value" id="whatifTotalPL">$0.00</div>
+                        </div>
+                        <div class="stat-group">
+                            <div class="stat-label">Potential P/L %</div>
+                            <div class="stat-value" id="whatifTotalPLPercent">0.00%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="whatIfCurrencyList"></div>
+            </div>
+        </div>
+        
+        <div id="addTab" class="tab-content">
+            <div class="section">
+                <h2>Add New Transaction</h2>
+                <form id="transactionForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="txDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Currency (e.g., BTC, ETH)</label>
+                            <input type="text" id="txCurrency" placeholder="BTC" required autocomplete="off" list="currencyDatalist">
+                            <datalist id="currencyDatalist"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label>Exchange (Optional)</label>
+                            <input type="text" id="txExchange" placeholder="Coinbase" list="exchangeList">
+                            <datalist id="exchangeList"></datalist>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Number of Coins</label>
+                            <input type="number" id="txCoins" step="any" placeholder="0.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Price per Coin ($)</label>
+                            <input type="number" id="txPrice" step="any" placeholder="50000.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Total Cost ($)</label>
+                            <input type="number" id="txTotal" step="any" readonly>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Transaction</button>
+                </form>
+            </div>
+            
+            <div class="section">
+                <h2>Transaction History</h2>
+                
+                <div class="search-container">
+                    <input type="text" 
+                           class="search-input" 
+                           id="transactionSearch" 
+                           placeholder="🔍 Search by coin name..."
+                           oninput="filterTransactions()">
+                </div>
+                
+                <div class="bulk-actions">
+                    <label>
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        Select All
+                    </label>
+                    <button class="btn btn-danger" onclick="deleteSelected()" style="padding: 6px 12px; font-size: 0.8em;">
+                        Delete Selected
+                    </button>
+                    <span class="selected-count" id="selectedCount">0 selected</span>
+                </div>
+                
+                <table class="transaction-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Date</th>
+                            <th>Currency</th>
+                            <th>Exchange</th>
+                            <th>Coins</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="detailsTab" class="tab-content">
+            <div class="section">
+                <h2>Detailed Currency Analysis</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Select Currency</label>
+                        <select id="detailCurrency" onchange="loadDetailedView()">
+                            <option value="">-- Select Currency --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Selling Price ($)</label>
+                        <input type="number" id="sellingPrice" step="0.01" value="0" oninput="loadDetailedView()">
+                    </div>
+                </div>
+                
+                <div id="detailedViewContent"></div>
+            </div>
+        </div>
+        
+        <div id="settingsTab" class="tab-content">
+            <div class="section">
+                <h2>Data Management</h2>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="exportData()">📥 Export Data</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import Data</button>
+                    <button class="btn btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+                </div>
+                <input type="file" id="importFile" accept=".json" class="hidden-input" onchange="importData(event)">
+            </div>
+            
+            <div class="section">
+                <h2>Coin ID Cache</h2>
+                <p class="help-text">
+                    Cached CoinGecko IDs for faster price fetching. The app automatically looks up and caches coin IDs. Clear this if you have issues with specific coins.
+                </p>
+                <button class="btn btn-secondary" onclick="clearCoinCache()">Clear Coin Cache</button>
+                <div id="cacheInfo" class="cache-info"></div>
+            </div>
+        </div>
+        
+        <div id="aboutTab" class="tab-content">
+            <div class="section">
+                <h2>About Crypto DCA Tracker</h2>
+                <div class="help-content">
+                    <h3>What is This Tool?</h3>
+                    <p>
+                        The Crypto DCA Tracker is a comprehensive tool designed to help you track and analyze your cryptocurrency Dollar Cost Averaging (DCA) investments. 
+                        DCA is an investment strategy where you invest a fixed amount of money at regular intervals, regardless of the asset's price, to reduce the impact of volatility.
+                    </p>
+                    
+                    <h3>Key Features</h3>
+                    <ul>
+                        <li><strong>Portfolio Tracking:</strong> Monitor all your cryptocurrency investments in one place with real-time price updates from CoinGecko.</li>
+                        <li><strong>Automatic Price Fetching:</strong> Smart coin discovery automatically finds and caches cryptocurrency IDs for any coin you add.</li>
+                        <li><strong>What-If Analysis:</strong> Test different price scenarios to see potential profits or losses before selling.</li>
+                        <li><strong>Detailed Analytics:</strong> View comprehensive charts showing your purchase history, average buy price, current market price, and potential selling scenarios.</li>
+                        <li><strong>Transaction Management:</strong> Add, edit, and delete transactions with autocomplete for previously used coins.</li>
+                        <li><strong>Data Import/Export:</strong> Backup your data or transfer it between devices using JSON export/import.</li>
+                    </ul>
+                    
+                    <h3>How to Use</h3>
+                    
+                    <h4>1. Adding Transactions</h4>
+                    <p>
+                        Go to the <strong>"Add/Modify Transaction"</strong> tab and fill in the details:
+                    </p>
+                    <ul>
+                        <li class="compact">Date: When you made the purchase</li>
+                        <li class="compact">Currency: The cryptocurrency symbol (e.g., BTC, ETH) - autocomplete suggests previously used coins</li>
+                        <li class="compact">Exchange: (Optional) Where you bought it (e.g., Coinbase, Binance)</li>
+                        <li class="compact">Number of Coins: How many coins you bought</li>
+                        <li class="compact">Price per Coin: The purchase price in USD</li>
+                    </ul>
+                    <p>
+                        The total cost is calculated automatically. Click "Add Transaction" to save it.
+                    </p>
+                    
+                    <h4>2. Viewing Your Portfolio</h4>
+                    <p>
+                        The <strong>"Portfolio"</strong> tab shows:
+                    </p>
+                    <ul>
+                        <li class="compact">Total invested amount across all cryptocurrencies</li>
+                        <li class="compact">Current portfolio value (based on fetched prices)</li>
+                        <li class="compact">Total profit/loss and percentage gain/loss</li>
+                        <li class="compact">Individual cards for each cryptocurrency showing detailed stats</li>
+                    </ul>
+                    <p>
+                        Click <strong>"🔄 Manual Price Fetching"</strong> to get the latest market prices from CoinGecko, or use <strong>"▶️ Auto-Fetch (5 min)"</strong> to automatically fetch prices every 5 minutes. The app automatically supports <strong>any cryptocurrency</strong> - it will look up the coin ID on first use and cache it for future fetches. You can also manually adjust prices by typing in the "Current Price" field.
+                    </p>
+                    
+                    <h4>3. What-If Analysis</h4>
+                    <p>
+                        The <strong>"What-If Analysis"</strong> tab lets you explore different price scenarios. Adjust the "What-If Price" for any coin to see how your portfolio would perform at that price. 
+                        This is perfect for planning your exit strategy or understanding your profit targets.
+                    </p>
+                    
+                    <h4>4. Detailed View with Charts</h4>
+                    <p>
+                        The <strong>"Detailed View"</strong> tab provides in-depth analysis:
+                    </p>
+                    <ul>
+                        <li class="compact">Select a cryptocurrency from the dropdown</li>
+                        <li class="compact">Enter a selling price to see potential profit/loss</li>
+                        <li class="compact">View an interactive chart showing:
+                            <ul>
+                                <li>Blue dots: Your transaction purchase prices over time</li>
+                                <li>Green dashed line: Your weighted average buy price (DCA)</li>
+                                <li>Orange dashed line: Current market price (fetched live)</li>
+                                <li>Purple dashed line: Your target selling price</li>
+                            </ul>
+                        </li>
+                        <li class="compact">Hover over transaction points to see date, buy price, and number of coins</li>
+                        <li class="compact">Edit or delete individual transactions directly from this view</li>
+                    </ul>
+                    
+                    <h4>5. Managing Your Data</h4>
+                    <p>
+                        In the <strong>"Settings"</strong> tab you can:
+                    </p>
+                    <ul>
+                        <li class="compact"><strong>Export Data:</strong> Download your complete transaction history as a JSON file for backup</li>
+                        <li class="compact"><strong>Import Data:</strong> Restore your data from a previously exported JSON file</li>
+                        <li class="compact"><strong>Clear All Data:</strong> Delete all transactions and start fresh (use with caution!)</li>
+                        <li class="compact"><strong>Clear Coin Cache:</strong> Reset cached CoinGecko IDs if you experience issues with specific coins</li>
+                    </ul>
+                    
+                    <h3>Data Privacy</h3>
+                    <p>
+                        All your data is stored locally in your browser's localStorage. Nothing is sent to any server except:
+                    </p>
+                    <ul>
+                        <li class="compact">API calls to CoinGecko to fetch current cryptocurrency prices</li>
+                        <li class="compact">API calls to CoinGecko to search for coin IDs (only on first use of each coin)</li>
+                    </ul>
+                    <p>
+                        Your transaction history, amounts, and personal data remain completely private on your device. <strong>No API key or signup required!</strong>
+                    </p>
+                    
+                    <h3>Tips for Best Results</h3>
+                    <ul>
+                        <li>Enter transactions as soon as you make them to keep accurate records</li>
+                        <li>Use the autocomplete feature when entering currency symbols to avoid typos</li>
+                        <li>Regularly export your data as a backup</li>
+                        <li>Fetch current prices before making selling decisions</li>
+                        <li>Use the What-If Analysis to plan your exit strategy</li>
+                        <li>Review the Detailed View chart to visualize your DCA strategy effectiveness</li>
+                    </ul>
+                    
+                    <h3>Technical Information</h3>
+                    <ul>
+                        <li class="compact"><strong>Price Data:</strong> CoinGecko API (free, works in browsers, supports all cryptocurrencies)</li>
+                        <li class="compact"><strong>Charts:</strong> Built with Chart.js library</li>
+                        <li class="compact"><strong>Storage:</strong> Browser localStorage (no expiration)</li>
+                        <li class="compact"><strong>Works Offline:</strong> Yes, once loaded (except price fetching)</li>
+                        <li class="compact"><strong>Coin Support:</strong> Automatic lookup - works with any cryptocurrency on CoinGecko</li>
+                    </ul>
+                    
+                    <div class="disclaimer-box">
+                        <p>
+                            💡 <strong>Disclaimer:</strong> This tool is for tracking purposes only. It does not provide financial advice. 
+                            Always do your own research and consult with financial professionals before making investment decisions.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Transaction</h2>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editTransactionForm">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="editTxDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Currency</label>
+                    <input type="text" id="editTxCurrency" required autocomplete="off" list="currencyDatalist">
+                </div>
+                <div class="form-group">
+                    <label>Exchange (Optional)</label>
+                    <input type="text" id="editTxExchange" list="exchangeList">
+                </div>
+                <div class="form-group">
+                    <label>Number of Coins</label>
+                    <input type="number" id="editTxCoins" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Price per Coin ($)</label>
+                    <input type="number" id="editTxPrice" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Total Cost ($)</label>
+                    <input type="number" id="editTxTotal" step="any" readonly>
+                </div>
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+    
+    <script>
+        /* ===================================
+           API CONFIGURATION
+           =================================== */
+        
+        // CoinMarketCap API Configuration
+        // IMPORTANT: CoinMarketCap API does NOT work directly from browsers due to CORS restrictions!
+        // This is a security feature - the API only works from servers (like Python, Node.js, etc.)
+        // 
+        // OPTIONS:
+        // 1. Enter prices manually (most reliable for browser-based tracking)
+        // 2. Use CoinGecko API instead (works from browsers but has rate limits)
+        // 3. Create a backend server to proxy the requests
+        //
+        // The API key below will NOT work from this HTML file, but it WILL work if you:
+        // - Run a local Python/Node.js server to fetch prices
+        // - Use the test_coinmarketcap.py script we provided
+        // - Deploy this app with a backend
+        
+        const CMC_API_KEY = 'YOUR_COINMARKETCAP_API_KEY_HERE'; // Works from servers only, not browsers!
+        
+        // Alternative: Use CoinGecko (works from browsers, no API key needed, but has rate limits)
+        const USE_COINGECKO = true; // Set to true to use CoinGecko instead
+        
+        /* ===================================
+           GLOBAL VARIABLES & INITIALIZATION
+           =================================== */
+        
+        // Key for localStorage to save all app data
+        const DB_KEY = 'cryptoDCAData';
+        
+        // Tracks which transaction is currently being edited
+        let editingTransactionId = null;
+        
+        // Sort state tracking for portfolio and what-if views
+        let portfolioSortState = 'alpha'; // 'alpha', 'highToLow', 'lowToHigh'
+        let whatIfSortState = 'alpha';    // 'alpha', 'highToLow', 'lowToHigh'
+        
+        // Auto-fetch state and interval
+        let autoFetchInterval = null;
+        let isAutoFetchEnabled = false;
+        let countdownInterval = null;
+        let remainingSeconds = 0;
+        
+        // Track previous P/L states to detect red-to-green changes
+        let previousPLStates = {}; // { symbol: 'positive'/'negative' }
+        
+        // Disable datalabels plugin globally - we'll enable it only for our chart
+        Chart.defaults.set('plugins.datalabels', {
+            display: false
+        });
+        
+        /* ===================================
+           TOAST NOTIFICATION SYSTEM
+           =================================== */
+        
+        /**
+         * Show a toast notification message
+         * @param {string} message - The message to display
+         * @param {string} type - 'success' or 'error' (default: success)
+         */
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+        
+        
+        /* ===================================
+           DATA PERSISTENCE (localStorage)
+           =================================== */
+        
+        /**
+         * Load all data from localStorage
+         * @returns {Object} Data object with transactions, prices, and cache
+         */
+        function loadData() {
+            const data = localStorage.getItem(DB_KEY);
+            return data ? JSON.parse(data) : { transactions: [], currentPrices: {}, coinIdCache: {} };
+        }
+        
+        /**
+         * Save all data to localStorage
+         * @param {Object} data - The complete data object to save
+         */
+        function saveData(data) {
+            localStorage.setItem(DB_KEY, JSON.stringify(data));
+        }
+        
+        // Load existing data or initialize new data structure
+        let appData = loadData();
+        
+        // Ensure all required properties exist (for backward compatibility)
+        if (!appData.whatIfPrices) {
+            appData.whatIfPrices = {};
+            saveData(appData);
+        }
+        if (!appData.coinIdCache) {
+            appData.coinIdCache = {};
+            saveData(appData);
+        }
+        
+        /* ===================================
+           UTILITY FUNCTIONS
+           =================================== */
+        
+        /**
+         * Format a date object to YYYY-MM-DD string
+         * @param {Date} date - Date object to format
+         * @returns {string} Formatted date string
+         */
+        function formatDate(date) {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        /**
+         * Format price with appropriate decimal places
+         * Preserves precision for small numbers, rounds large numbers
+         * @param {number} price - Price to format
+         * @returns {string} Formatted price string
+         */
+        function formatPrice(price) {
+            if (price === null || price === undefined || isNaN(price)) {
+                return '0.00';
+            }
+            
+            const absPrice = Math.abs(price);
+            
+            // For very small prices (< 0.01), show up to 8 decimals
+            if (absPrice < 0.01 && absPrice > 0) {
+                // Remove trailing zeros
+                return price.toFixed(8).replace(/\.?0+$/, '');
+            }
+            // For small prices (< 1), show up to 6 decimals
+            else if (absPrice < 1) {
+                return price.toFixed(6).replace(/\.?0+$/, '');
+            }
+            // For medium prices (< 100), show up to 4 decimals
+            else if (absPrice < 100) {
+                return price.toFixed(4).replace(/\.?0+$/, '');
+            }
+            // For large prices, show 2 decimals
+            else {
+                return price.toFixed(2);
+            }
+        }
+        
+        /**
+         * Format currency value with $ sign
+         * @param {number} value - Value to format
+         * @returns {string} Formatted currency string
+         */
+        function formatCurrency(value) {
+            return '$' + formatPrice(value);
+        }
+
+        
+        /* ===================================
+           PRICE FETCHING (Multiple Sources)
+           =================================== */
+        
+        /**
+         * Search for a coin's CoinGecko ID by symbol
+         * Caches results to avoid repeated API calls
+         */
+        async function searchCoinGeckoId(symbol) {
+            try {
+                // Check cache first
+                if (appData.coinIdCache && appData.coinIdCache[symbol]) {
+                    return appData.coinIdCache[symbol];
+                }
+                
+                // Add delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Search CoinGecko for the coin
+                const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${symbol}`);
+                
+                if (!response.ok) {
+                    console.error(`CoinGecko search error ${response.status} for ${symbol}`);
+                    return null;
+                }
+                
+                const data = await response.json();
+                
+                if (data.coins && data.coins.length > 0) {
+                    // Try to find exact symbol match first
+                    const exactMatch = data.coins.find(coin => 
+                        coin.symbol.toLowerCase() === symbol.toLowerCase()
+                    );
+                    
+                    const coinId = exactMatch ? exactMatch.id : data.coins[0].id;
+                    
+                    // Cache the result
+                    if (!appData.coinIdCache) appData.coinIdCache = {};
+                    appData.coinIdCache[symbol] = coinId;
+                    saveData(appData);
+                    
+                    console.log(`Found CoinGecko ID for ${symbol}: ${coinId}`);
+                    return coinId;
+                }
+                
+                return null;
+            } catch (error) {
+                console.error(`Error searching CoinGecko for ${symbol}:`, error);
+                return null;
+            }
+        }
+        
+        /**
+         * Fetch prices using CoinGecko API (works in browsers!)
+         * Automatically looks up coin IDs for any symbol
+         */
+        async function fetchPricesFromCoinGecko(symbols) {
+            try {
+                // Pre-defined mappings for common coins (faster than API lookup)
+                const knownMappings = {
+                    'BTC': 'bitcoin', 'ETH': 'ethereum', 'USDT': 'tether', 'BNB': 'binancecoin',
+                    'SOL': 'solana', 'XRP': 'ripple', 'USDC': 'usd-coin', 'ADA': 'cardano',
+                    'AVAX': 'avalanche-2', 'DOGE': 'dogecoin', 'TRX': 'tron', 'DOT': 'polkadot',
+                    'MATIC': 'matic-network', 'LTC': 'litecoin', 'SHIB': 'shiba-inu', 
+                    'LINK': 'chainlink', 'UNI': 'uniswap', 'ATOM': 'cosmos', 'XLM': 'stellar',
+                    'NEAR': 'near', 'ALGO': 'algorand', 'FIL': 'filecoin', 'LDO': 'lido-dao',
+                    'RENDER': 'render-token', 'ONDO': 'ondo-finance', 'ZK': 'zksync',
+                    'GALA': 'gala', 'AXS': 'axie-infinity', 'APT': 'aptos', 'ARB': 'arbitrum',
+                    'OP': 'optimism', 'SUI': 'sui', 'SEI': 'sei-network', 'INJ': 'injective-protocol',
+                    'PEPE': 'pepe', 'WIF': 'dogwifcoin', 'BONK': 'bonk', 'FET': 'fetch-ai'
+                };
+                
+                const ids = [];
+                const symbolMap = {};
+                
+                // First, try to get IDs from cache or known mappings
+                for (const symbol of symbols) {
+                    const upperSymbol = symbol.toUpperCase();
+                    let id = knownMappings[upperSymbol];
+                    
+                    // If not in known mappings, check cache
+                    if (!id && appData.coinIdCache && appData.coinIdCache[symbol]) {
+                        id = appData.coinIdCache[symbol];
+                    }
+                    
+                    // If still not found, search for it
+                    if (!id) {
+                        console.log(`Looking up CoinGecko ID for ${symbol}...`);
+                        id = await searchCoinGeckoId(symbol);
+                    }
+                    
+                    if (id) {
+                        ids.push(id);
+                        symbolMap[id] = symbol;
+                    } else {
+                        console.warn(`Could not find CoinGecko ID for ${symbol}`);
+                    }
+                }
+                
+                if (ids.length === 0) {
+                    return {};
+                }
+                
+                const idsStr = ids.join(',');
+                const url = `https://api.coingecko.com/api/v3/simple/price?ids=${idsStr}&vs_currencies=usd`;
+                
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    console.error(`CoinGecko error ${response.status}`);
+                    return {};
+                }
+                
+                const data = await response.json();
+                const results = {};
+                
+                for (const [id, symbol] of Object.entries(symbolMap)) {
+                    if (data[id] && data[id].usd) {
+                        results[symbol] = data[id].usd;
+                    }
+                }
+                
+                return results;
+                
+            } catch (error) {
+                console.error('CoinGecko fetch error:', error);
+                return {};
+            }
+        }
+        
+        /**
+         * Fetch current price from CoinMarketCap API
+         * NOTE: This will fail in browsers due to CORS!
+         * @param {string} symbol - Cryptocurrency symbol (e.g., BTC, ETH)
+         * @returns {number|null} Current price in USD or null if failed
+         */
+        async function fetchPrice(symbol, retryCount = 0) {
+            try {
+                if (!CMC_API_KEY || CMC_API_KEY === 'YOUR_COINMARKETCAP_API_KEY_HERE') {
+                    console.error('CoinMarketCap API key not configured. Please add your API key to the script.');
+                    showToast('Please configure CoinMarketCap API key', 'error');
+                    return null;
+                }
+                
+                // Add delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                const response = await fetch(
+                    `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${symbol.toUpperCase()}&convert=USD`,
+                    {
+                        headers: {
+                            'X-CMC_PRO_API_KEY': CMC_API_KEY
+                        }
+                    }
+                );
+                
+                // Check for rate limiting (HTTP 429)
+                if (response.status === 429) {
+                    if (retryCount < 3) {
+                        const waitTime = Math.min(5000 * Math.pow(2, retryCount), 30000);
+                        console.warn(`Rate limited for ${symbol} - waiting ${waitTime/1000}s before retry ${retryCount + 1}/3`);
+                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        return fetchPrice(symbol, retryCount + 1);
+                    } else {
+                        console.error(`Max retries reached for ${symbol}`);
+                        return null;
+                    }
+                }
+                
+                if (!response.ok) {
+                    console.error(`CoinMarketCap HTTP error ${response.status} for ${symbol}`);
+                    return null;
+                }
+                
+                const data = await response.json();
+                
+                if (data.data && data.data[symbol.toUpperCase()] && data.data[symbol.toUpperCase()].quote && data.data[symbol.toUpperCase()].quote.USD) {
+                    const price = data.data[symbol.toUpperCase()].quote.USD.price;
+                    console.log(`✓ ${symbol}: $${price}`);
+                    return price;
+                }
+                
+                console.error(`No price data found for ${symbol}`);
+                return null;
+            } catch (error) {
+                console.error(`Error fetching price from CoinMarketCap for ${symbol}:`, error);
+                return null;
+            }
+        }
+        
+        /**
+         * Fetch prices for all currencies in the portfolio
+         * Uses CoinGecko by default (browser-friendly) or CoinMarketCap if configured
+         */
+        async function fetchAllPrices() {
+            const currencies = getCurrencies();
+            const currencyList = Object.keys(currencies);
+            
+            if (currencyList.length === 0) {
+                showToast('No currencies to fetch', 'error');
+                return;
+            }
+            
+            // Update button state to show fetching in progress
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Fetching prices...';
+            
+            try {
+                let prices = {};
+                
+                // Try CoinGecko first (works in browsers!)
+                if (USE_COINGECKO) {
+                    console.log('Using CoinGecko API (browser-friendly)');
+                    prices = await fetchPricesFromCoinGecko(currencyList);
+                } else {
+                    // Try CoinMarketCap (requires server/proxy)
+                    if (!CMC_API_KEY || CMC_API_KEY === 'YOUR_COINMARKETCAP_API_KEY_HERE') {
+                        showToast('CoinMarketCap API key not configured. Using manual entry mode.', 'error');
+                        btn.disabled = false;
+                        btn.textContent = '🔄 Manual Price Fetching';
+                        return;
+                    }
+                    
+                    // Batch fetch all symbols in one API call
+                    const symbolsStr = currencyList.map(s => s.toUpperCase()).join(',');
+                    
+                    console.log(`Fetching batch prices from CoinMarketCap for: ${symbolsStr}`);
+                    
+                    const response = await fetch(
+                        `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${symbolsStr}&convert=USD`,
+                        {
+                            headers: {
+                                'X-CMC_PRO_API_KEY': CMC_API_KEY
+                            }
+                        }
+                    );
+                    
+                    if (!response.ok) {
+                        throw new Error(`CoinMarketCap API error ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Process each currency from the batch response
+                    for (const currency of currencyList) {
+                        const symbol = currency.toUpperCase();
+                        
+                        if (data.data && data.data[symbol] && data.data[symbol].quote && data.data[symbol].quote.USD) {
+                            prices[currency] = data.data[symbol].quote.USD.price;
+                        }
+                    }
+                }
+                
+                // Update prices
+                let successCount = 0;
+                let failedCurrencies = [];
+                
+                for (const currency of currencyList) {
+                    if (prices[currency]) {
+                        appData.currentPrices[currency] = prices[currency];
+                        successCount++;
+                        console.log(`✓ ${currency}: $${prices[currency]}`);
+                    } else {
+                        failedCurrencies.push(currency);
+                        console.error(`✗ ${currency}: Not found`);
+                    }
+                }
+                
+                // Save all prices at once
+                saveData(appData);
+                
+                // Check for P/L changes and play sound if needed
+                checkPLChangesAndNotify();
+                
+                updatePortfolioView();
+                
+                // Restore button state
+                btn.disabled = false;
+                btn.textContent = '🔄 Manual Price Fetching';
+                
+                // Show result notification
+                if (failedCurrencies.length > 0) {
+                    showToast(`Fetched ${successCount}/${currencyList.length}. Failed: ${failedCurrencies.join(', ')}`, successCount > 0 ? 'success' : 'error');
+                } else {
+                    showToast(`Successfully fetched all ${successCount} prices!`);
+                }
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                
+                // Check if it's a CORS/network error
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('CORS')) {
+                    showToast('API blocked by browser (CORS). Try CoinGecko or enter prices manually.', 'error');
+                    console.error('CORS ERROR: CoinMarketCap API does not allow direct browser requests.');
+                    console.error('Solution: Set USE_COINGECKO = true at the top of the script, or enter prices manually.');
+                } else {
+                    showToast('Error fetching prices: ' + error.message, 'error');
+                }
+                
+                btn.disabled = false;
+                btn.textContent = '🔄 Manual Price Fetching';
+            }
+        }
+        
+        /**
+         * Toggle automatic price fetching with countdown timer
+         */
+        function toggleAutoFetch() {
+            if (isAutoFetchEnabled) {
+                // Stop auto-fetch
+                stopAutoFetch();
+            } else {
+                // Start auto-fetch
+                startAutoFetch();
+            }
+        }
+        
+        /**
+         * Start automatic price fetching with countdown display
+         */
+        function startAutoFetch() {
+            if (isAutoFetchEnabled) {
+                showToast('Auto-fetch is already running', 'error');
+                return;
+            }
+            
+            isAutoFetchEnabled = true;
+            
+            // Get duration from input (in minutes)
+            const durationMinutes = parseInt(document.getElementById('autoFetchDuration').value) || 5;
+            const durationMs = durationMinutes * 60 * 1000;
+            
+            // Initial fetch
+            fetchAllPrices();
+            
+            // Set up interval for auto-fetching
+            autoFetchInterval = setInterval(() => {
+                fetchAllPrices();
+                resetCountdown();
+            }, durationMs);
+            
+            // Start countdown timer
+            resetCountdown();
+            
+            showToast(`Auto-fetch started (every ${durationMinutes} min)`);
+        }
+        
+        /**
+         * Reset and start the countdown timer
+         */
+        function resetCountdown() {
+            const durationMinutes = parseInt(document.getElementById('autoFetchDuration').value) || 5;
+            remainingSeconds = durationMinutes * 60;
+            
+            // Clear existing countdown interval if any
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            // Update button immediately
+            updateCountdownDisplay();
+            
+            // Start countdown
+            countdownInterval = setInterval(() => {
+                remainingSeconds--;
+                
+                if (remainingSeconds <= 0) {
+                    remainingSeconds = 0;
+                }
+                
+                updateCountdownDisplay();
+            }, 1000);
+        }
+        
+        /**
+         * Update the countdown display on the button
+         */
+        function updateCountdownDisplay() {
+            const label = document.getElementById('autoFetchLabel');
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            label.textContent = `⏸️ Stop Auto-Fetch (${timeStr})`;
+        }
+        
+        /**
+         * Stop automatic price fetching
+         */
+        function stopAutoFetch() {
+            if (!isAutoFetchEnabled) {
+                return;
+            }
+            
+            isAutoFetchEnabled = false;
+            
+            // Clear intervals
+            if (autoFetchInterval) {
+                clearInterval(autoFetchInterval);
+                autoFetchInterval = null;
+            }
+            
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            // Reset button label
+            const label = document.getElementById('autoFetchLabel');
+            label.textContent = '▶️ Start Auto-Fetch';
+            
+            showToast('Auto-fetch stopped');
+        }
+        
+        /**
+         * Handle changes to auto-fetch duration input
+         * Automatically restart auto-fetch with new duration if already running
+         */
+        function handleDurationChange() {
+            if (isAutoFetchEnabled) {
+                // Restart with new duration
+                stopAutoFetch();
+                startAutoFetch();
+            }
+        }
+        
+        /**
+         * Play a sound notification
+         */
+        function playNotificationSound() {
+            try {
+                // Create AudioContext
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create oscillator for a pleasant notification sound
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Configure sound (pleasant chime-like tone)
+                oscillator.frequency.value = 800; // 800 Hz
+                oscillator.type = 'sine';
+                
+                // Volume envelope
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                // Play sound
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+            } catch (error) {
+                console.error('Error playing sound:', error);
+            }
+        }
+        
+        /**
+         * Check for P/L state changes and play sound if changed from negative to positive
+         */
+        function checkPLChangesAndNotify() {
+            const currencies = getCurrencies();
+            let changedCoins = [];
+            
+            for (const currency in currencies) {
+                const data = currencies[currency];
+                const currentPrice = appData.currentPrices[currency] || 0;
+                const currentValue = data.totalCoins * currentPrice;
+                const profitLoss = currentValue - data.totalInvested;
+                
+                const currentState = profitLoss >= 0 ? 'positive' : 'negative';
+                const previousState = previousPLStates[currency];
+                
+                // Check if changed from negative to positive (red to green)
+                if (previousState === 'negative' && currentState === 'positive') {
+                    changedCoins.push(currency);
+                }
+                
+                // Update state
+                previousPLStates[currency] = currentState;
+            }
+            
+            // Play sound if any coin changed to positive
+            if (changedCoins.length > 0) {
+                playNotificationSound();
+                showToast(`🎉 ${changedCoins.join(', ')} turned profitable!`);
+            }
+        }
+        
+        /**
+         * Clear the coin ID cache
+         */
+        function clearCoinCache() {
+            if (confirm('Clear all cached coin IDs? You will need to re-fetch prices.')) {
+                appData.coinIdCache = {};
+                saveData(appData);
+                updateCacheInfo();
+                showToast('Coin cache cleared');
+            }
+        }
+        
+        /**
+         * Update the display of cached coins information
+         */
+        function updateCacheInfo() {
+            const cacheInfo = document.getElementById('cacheInfo');
+            if (!cacheInfo) return; // Element might not exist yet
+            
+            const cacheSize = appData.coinIdCache ? Object.keys(appData.coinIdCache).length : 0;
+            if (cacheSize > 0) {
+                cacheInfo.textContent = `Cached ${cacheSize} coin(s): ${Object.keys(appData.coinIdCache).join(', ')}`;
+            } else {
+                cacheInfo.textContent = 'No cached coins yet';
+            }
+        }
+        
+        /* ===================================
+           PAGE INITIALIZATION
+           =================================== */
+        
+        /**
+         * Initialize the application when DOM is loaded
+         * Sets up form handlers, loads data, and auto-fetches prices if needed
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set today's date as default for transaction form
+            const today = formatDate(new Date());
+            document.getElementById('txDate').value = today;
+            
+            // Auto-calculate total cost when coins or price changes
+            document.getElementById('txCoins').addEventListener('input', calculateTotal);
+            document.getElementById('txPrice').addEventListener('input', calculateTotal);
+            document.getElementById('editTxCoins').addEventListener('input', calculateEditTotal);
+            document.getElementById('editTxPrice').addEventListener('input', calculateEditTotal);
+            
+            // Listen for changes to auto-fetch duration
+            document.getElementById('autoFetchDuration').addEventListener('change', handleDurationChange);
+            
+            // Load all views with existing data
+            updatePortfolioView();
+            updateWhatIfView();
+            updateTransactionTable();
+            updateCurrencyDropdown();
+            updateCacheInfo();
+            
+            // Initialize previous P/L states for sound notifications
+            const currencies = getCurrencies();
+            for (const currency in currencies) {
+                const data = currencies[currency];
+                const currentPrice = appData.currentPrices[currency] || 0;
+                const currentValue = data.totalCoins * currentPrice;
+                const profitLoss = currentValue - data.totalInvested;
+                previousPLStates[currency] = profitLoss >= 0 ? 'positive' : 'negative';
+            }
+            
+            // Auto-fetch prices on first load if we have currencies but no prices
+            if (Object.keys(currencies).length > 0 && Object.keys(appData.currentPrices).length === 0) {
+                fetchAllPrices();
+            }
+        });
+        
+        /* ===================================
+           FORM CALCULATIONS
+           =================================== */
+        
+        /**
+         * Calculate and display total cost in the add transaction form
+         * Total = Number of Coins × Price per Coin
+         */
+        function calculateTotal() {
+            const coins = parseFloat(document.getElementById('txCoins').value) || 0;
+            const price = parseFloat(document.getElementById('txPrice').value) || 0;
+            const total = coins * price;
+            document.getElementById('txTotal').value = total; // Keep full precision
+        }
+        
+        /**
+         * Calculate and display total cost in the edit transaction form
+         * Total = Number of Coins × Price per Coin
+         */
+        function calculateEditTotal() {
+            const coins = parseFloat(document.getElementById('editTxCoins').value) || 0;
+            const price = parseFloat(document.getElementById('editTxPrice').value) || 0;
+            const total = coins * price;
+            document.getElementById('editTxTotal').value = total; // Keep full precision
+        }
+        
+        /* ===================================
+           TAB NAVIGATION
+           =================================== */
+        
+        /**
+         * Switch between different tabs in the application
+         * @param {Event} event - Click event from tab button
+         * @param {string} tabName - ID of the tab to show
+         */
+        function switchTab(event, tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        /* ===================================
+           TRANSACTION MANAGEMENT
+           =================================== */
+        
+        /**
+         * Handle add transaction form submission
+         * Creates a new transaction and updates all views
+         */
+        document.getElementById('transactionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dateInput = document.getElementById('txDate').value || formatDate(new Date());
+            
+            // Create transaction object
+            const transaction = {
+                id: Date.now(), // Unique ID using timestamp
+                date: dateInput,
+                currency: document.getElementById('txCurrency').value.toUpperCase(),
+                exchange: document.getElementById('txExchange').value,
+                coins: parseFloat(document.getElementById('txCoins').value),
+                price: parseFloat(document.getElementById('txPrice').value),
+                total: parseFloat(document.getElementById('txCoins').value) * parseFloat(document.getElementById('txPrice').value)
+            };
+            
+            // Add to data and save
+            appData.transactions.push(transaction);
+            saveData(appData);
+            
+            // Reset form to defaults
+            document.getElementById('transactionForm').reset();
+            document.getElementById('txDate').value = formatDate(new Date());
+            
+            // Update all views to reflect new transaction
+            updatePortfolioView();
+            updateWhatIfView();
+            updateTransactionTable();
+            updateCurrencyDropdown();
+            
+            showToast('Transaction added successfully');
+        });
+        
+        /**
+         * Open the edit modal for a specific transaction
+         * @param {number} id - Transaction ID to edit
+         */
+        function editTransaction(id) {
+            const transaction = appData.transactions.find(tx => tx.id === id);
+            if (!transaction) return;
+            
+            // Store which transaction we're editing
+            editingTransactionId = id;
+            
+            // Populate form with existing values
+            document.getElementById('editTxDate').value = transaction.date;
+            document.getElementById('editTxCurrency').value = transaction.currency;
+            document.getElementById('editTxExchange').value = transaction.exchange || '';
+            document.getElementById('editTxCoins').value = transaction.coins;
+            document.getElementById('editTxPrice').value = transaction.price;
+            calculateEditTotal();
+            
+            // Show the modal
+            document.getElementById('editModal').classList.add('active');
+        }
+        
+        /**
+         * Close the edit transaction modal
+         */
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            editingTransactionId = null;
+        }
+        
+        /**
+         * Handle edit transaction form submission
+         * Updates the transaction and refreshes all views
+         */
+        document.getElementById('editTransactionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Find the transaction being edited
+            const transactionIndex = appData.transactions.findIndex(tx => tx.id === editingTransactionId);
+            if (transactionIndex === -1) return;
+            
+            // Update transaction with new values
+            appData.transactions[transactionIndex] = {
+                id: editingTransactionId,
+                date: document.getElementById('editTxDate').value,
+                currency: document.getElementById('editTxCurrency').value.toUpperCase(),
+                exchange: document.getElementById('editTxExchange').value,
+                coins: parseFloat(document.getElementById('editTxCoins').value),
+                price: parseFloat(document.getElementById('editTxPrice').value),
+                total: parseFloat(document.getElementById('editTxCoins').value) * parseFloat(document.getElementById('editTxPrice').value)
+            };
+            
+            saveData(appData);
+            closeEditModal();
+            
+            // Update all views to reflect changes
+            updatePortfolioView();
+            updateWhatIfView();
+            updateTransactionTable();
+            updateCurrencyDropdown();
+            loadDetailedView(); // Update detailed view if open
+            
+            showToast('Transaction updated successfully');
+        });
+        
+        /**
+         * Delete a transaction after confirmation
+         * @param {number} id - Transaction ID to delete
+         */
+        function deleteTransaction(id) {
+            if (confirm('Delete this transaction?')) {
+                appData.transactions = appData.transactions.filter(tx => tx.id !== id);
+                saveData(appData);
+                
+                // Update all views
+                updatePortfolioView();
+                updateWhatIfView();
+                updateTransactionTable();
+                updateCurrencyDropdown();
+                loadDetailedView(); // Update detailed view if open
+                
+                showToast('Transaction deleted');
+            }
+        }
+        
+        /* ===================================
+           DATA AGGREGATION & VIEW UPDATES
+           =================================== */
+        
+        /**
+         * Update the transaction history table
+         * Displays all transactions sorted by date (newest first)
+         */
+        function updateTransactionTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+            
+            // Sort by date descending
+            const sortedTransactions = [...appData.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedTransactions.forEach(tx => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" 
+                               class="transaction-checkbox" 
+                               value="${tx.id}"
+                               onchange="updateSelectedCount()">
+                    </td>
+                    <td>${tx.date}</td>
+                    <td><strong>${tx.currency}</strong></td>
+                    <td>${tx.exchange || '-'}</td>
+                    <td>${tx.coins.toFixed(8)}</td>
+                    <td>${formatCurrency(tx.price)}</td>
+                    <td>${formatCurrency(tx.total)}</td>
+                    <td>
+                        <button class="edit-btn" onclick="editTransaction(${tx.id})">Edit</button>
+                        <button class="delete-btn" onclick="deleteTransaction(${tx.id})">Delete</button>
+                    </td>
+                `;
+            });
+            
+            // Reset selection state
+            document.getElementById('selectAll').checked = false;
+            updateSelectedCount();
+            
+            // Update exchange list after updating table
+            updateExchangeList();
+        }
+        
+        /**
+         * Update the exchange autocomplete list with unique exchanges from transactions
+         */
+        function updateExchangeList() {
+            const datalist = document.getElementById('exchangeList');
+            datalist.innerHTML = '';
+            
+            // Get unique exchanges from all transactions
+            const exchanges = new Set();
+            appData.transactions.forEach(tx => {
+                if (tx.exchange && tx.exchange.trim() !== '') {
+                    exchanges.add(tx.exchange.trim());
+                }
+            });
+            
+            // Sort alphabetically and add to datalist
+            Array.from(exchanges).sort().forEach(exchange => {
+                const option = document.createElement('option');
+                option.value = exchange;
+                datalist.appendChild(option);
+            });
+        }
+        
+        /**
+         * Aggregate all transactions by currency
+         * Calculates total coins and total invested for each currency
+         * @returns {Object} Object with currency symbols as keys, containing totals and transactions
+         */
+        function getCurrencies() {
+            const currencies = {};
+            
+            appData.transactions.forEach(tx => {
+                if (!currencies[tx.currency]) {
+                    currencies[tx.currency] = {
+                        totalCoins: 0,
+                        totalInvested: 0,
+                        transactions: []
+                    };
+                }
+                
+                currencies[tx.currency].totalCoins += tx.coins;
+                currencies[tx.currency].totalInvested += tx.total;
+                currencies[tx.currency].transactions.push(tx);
+            });
+            
+            return currencies;
+        }
+        
+        /**
+         * Update the main portfolio view
+         * Shows summary stats and individual currency cards with current prices
+         */
+        function updatePortfolioView() {
+            const currencies = getCurrencies();
+            const currencyList = document.getElementById('currencyList');
+            currencyList.innerHTML = '';
+            
+            let totalInvested = 0;
+            let totalValue = 0;
+            
+            // Calculate P/L for each currency for sorting
+            const currencyData = Object.keys(currencies).map(currency => {
+                const data = currencies[currency];
+                const currentPrice = appData.currentPrices[currency] || 0;
+                const currentValue = data.totalCoins * currentPrice;
+                const profitLoss = currentValue - data.totalInvested;
+                return { currency, data, profitLoss };
+            });
+            
+            // Sort by P/L or alphabetically based on current sort state
+            if (portfolioSortState === 'highToLow') {
+                currencyData.sort((a, b) => b.profitLoss - a.profitLoss);
+            } else if (portfolioSortState === 'lowToHigh') {
+                currencyData.sort((a, b) => a.profitLoss - b.profitLoss);
+            } else {
+                currencyData.sort((a, b) => a.currency.localeCompare(b.currency));
+            }
+            
+            currencyData.forEach(({currency, data}) => {
+                const avgPrice = data.totalInvested / data.totalCoins;
+                const currentPrice = appData.currentPrices[currency] || 0;
+                const currentValue = data.totalCoins * currentPrice;
+                const profitLoss = currentValue - data.totalInvested;
+                const profitLossPercent = (profitLoss / data.totalInvested) * 100;
+                
+                totalInvested += data.totalInvested;
+                totalValue += currentValue;
+                
+                const card = document.createElement('div');
+                card.className = 'currency-card';
+                card.innerHTML = `
+                    <div class="currency-header">
+                        <div class="currency-name">${currency}</div>
+                        <button class="expand-btn" onclick="toggleDetails('${currency}')">View Transactions</button>
+                    </div>
+                    <div class="currency-stats">
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Total Coins</div>
+                            <div class="currency-stat-value">${data.totalCoins.toFixed(8)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Invested</div>
+                            <div class="currency-stat-value">${formatCurrency(data.totalInvested)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Avg Buy Price</div>
+                            <div class="currency-stat-value">${formatCurrency(avgPrice)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Current Price</div>
+                            <div class="currency-stat-value">
+                                <input type="number" step="any" value="${currentPrice}" 
+                                       onchange="updateCurrentPrice('${currency}', this.value)"
+                                       class="price-input">
+                            </div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Current Value</div>
+                            <div class="currency-stat-value">${formatCurrency(currentValue)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">P/L</div>
+                            <div class="currency-stat-value ${profitLoss > 0 ? 'pl-positive' : profitLoss < 0 ? 'pl-negative' : 'pl-zero'}">
+                                ${profitLoss >= 0 ? '▲' : '▼'} ${formatCurrency(profitLoss)} (${profitLossPercent.toFixed(2)}%)
+                            </div>
+                        </div>
+                    </div>
+                    <div id="details-${currency}" class="transaction-details">
+                        <h4 class="subsection-header">Individual Transactions</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Exchange</th>
+                                    <th>Coins</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.transactions.map(tx => `
+                                    <tr>
+                                        <td>${tx.date}</td>
+                                        <td>${tx.exchange || '-'}</td>
+                                        <td>${tx.coins.toFixed(8)}</td>
+                                        <td>${formatCurrency(tx.price)}</td>
+                                        <td>${formatCurrency(tx.total)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                currencyList.appendChild(card);
+            });
+            
+            // Update totals
+            const totalPL = totalValue - totalInvested;
+            const totalPLPercent = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
+            
+            document.getElementById('totalInvested').textContent = formatCurrency(totalInvested);
+            document.getElementById('currentValue').textContent = formatCurrency(totalValue);
+            document.getElementById('totalProfitLoss').textContent = `${formatCurrency(totalPL)} (${totalPLPercent.toFixed(2)}%)`;
+            document.getElementById('totalProfitLoss').className = `stat-value ${totalPL >= 0 ? 'positive' : totalPL === 0 ? '' : 'negative'}`;
+        }
+        
+        /**
+         * Toggle visibility of transaction details for a currency
+         * @param {string} currency - Currency symbol to toggle
+         */
+        function toggleDetails(currency) {
+            const details = document.getElementById(`details-${currency}`);
+            details.classList.toggle('show');
+        }
+        
+        /**
+         * Update current price for a currency (manual entry)
+         * @param {string} currency - Currency symbol
+         * @param {number} price - New price value
+         */
+        function updateCurrentPrice(currency, price) {
+            // Get current state before update
+            const currencies = getCurrencies();
+            const data = currencies[currency];
+            if (data) {
+                const oldPrice = appData.currentPrices[currency] || 0;
+                const oldValue = data.totalCoins * oldPrice;
+                const oldPL = oldValue - data.totalInvested;
+                const oldState = oldPL >= 0 ? 'positive' : 'negative';
+                
+                // Update price
+                appData.currentPrices[currency] = parseFloat(price);
+                
+                // Check new state
+                const newPrice = parseFloat(price);
+                const newValue = data.totalCoins * newPrice;
+                const newPL = newValue - data.totalInvested;
+                const newState = newPL >= 0 ? 'positive' : 'negative';
+                
+                // Play sound if changed from negative to positive
+                if (oldState === 'negative' && newState === 'positive') {
+                    playNotificationSound();
+                    showToast(`🎉 ${currency} turned profitable!`);
+                }
+                
+                // Update previous state
+                previousPLStates[currency] = newState;
+            } else {
+                appData.currentPrices[currency] = parseFloat(price);
+            }
+            
+            saveData(appData);
+            updatePortfolioView();
+        }
+        
+        /**
+         * Clear all fetched prices and reset them to 0
+         */
+        function clearFetchedPrices() {
+            if (confirm('Clear all fetched prices?')) {
+                // Reset all current prices to 0
+                appData.currentPrices = {};
+                saveData(appData);
+                updatePortfolioView();
+                showToast('All prices cleared');
+            }
+        }
+        
+        /**
+         * Toggle sorting coins by P/L (descending order)
+         */
+        /**
+         * Set portfolio sort mode
+         */
+        function setPortfolioSort(mode) {
+            portfolioSortState = mode;
+            updatePortfolioView();
+            
+            // Update button styles
+            const alphaBtn = document.getElementById('portfolioSortAlpha');
+            const highLowBtn = document.getElementById('portfolioSortHighLow');
+            const lowHighBtn = document.getElementById('portfolioSortLowHigh');
+            
+            // Reset all buttons
+            alphaBtn.style.background = '';
+            alphaBtn.style.color = '';
+            highLowBtn.style.background = '';
+            highLowBtn.style.color = '';
+            lowHighBtn.style.background = '';
+            lowHighBtn.style.color = '';
+            
+            // Highlight active button
+            if (mode === 'alpha') {
+                alphaBtn.style.background = '#10b981';
+                alphaBtn.style.color = 'white';
+                showToast('Sorted Alphabetically');
+            } else if (mode === 'highToLow') {
+                highLowBtn.style.background = '#10b981';
+                highLowBtn.style.color = 'white';
+                showToast('Sorted by P/L (High to Low)');
+            } else if (mode === 'lowToHigh') {
+                lowHighBtn.style.background = '#10b981';
+                lowHighBtn.style.color = 'white';
+                showToast('Sorted by P/L (Low to High)');
+            }
+        }
+        
+        /**
+         * Clear all What-If prices
+         */
+        function clearWhatIfPrices() {
+            if (confirm('Clear all What-If prices?')) {
+                appData.whatIfPrices = {};
+                saveData(appData);
+                updateWhatIfView();
+                showToast('All What-If prices cleared');
+            }
+        }
+        
+        /**
+         * Set what-if sort mode
+         */
+        function setWhatIfSort(mode) {
+            whatIfSortState = mode;
+            updateWhatIfView();
+            
+            // Update button styles
+            const alphaBtn = document.getElementById('whatIfSortAlpha');
+            const highLowBtn = document.getElementById('whatIfSortHighLow');
+            const lowHighBtn = document.getElementById('whatIfSortLowHigh');
+            
+            // Reset all buttons
+            alphaBtn.style.background = '';
+            alphaBtn.style.color = '';
+            highLowBtn.style.background = '';
+            highLowBtn.style.color = '';
+            lowHighBtn.style.background = '';
+            lowHighBtn.style.color = '';
+            
+            // Highlight active button
+            if (mode === 'alpha') {
+                alphaBtn.style.background = '#10b981';
+                alphaBtn.style.color = 'white';
+                showToast('Sorted Alphabetically');
+            } else if (mode === 'highToLow') {
+                highLowBtn.style.background = '#10b981';
+                highLowBtn.style.color = 'white';
+                showToast('Sorted by P/L (High to Low)');
+            } else if (mode === 'lowToHigh') {
+                lowHighBtn.style.background = '#10b981';
+                lowHighBtn.style.color = 'white';
+                showToast('Sorted by P/L (Low to High)');
+            }
+        }
+        
+        /**
+         * Update what-if scenario price for a currency
+         * @param {string} currency - Currency symbol
+         * @param {number} price - Scenario price value
+         */
+        function updateWhatIfPrice(currency, price) {
+            appData.whatIfPrices[currency] = parseFloat(price);
+            saveData(appData);
+            updateWhatIfView();
+        }
+        
+        /**
+         * Update the What-If Analysis view
+         * Shows potential outcomes with user-defined prices
+         */
+        function updateWhatIfView() {
+            const currencies = getCurrencies();
+            const currencyList = document.getElementById('whatIfCurrencyList');
+            currencyList.innerHTML = '';
+            
+            let totalInvested = 0;
+            let totalValue = 0;
+            
+            // Calculate P/L for each currency for sorting
+            const currencyData = Object.keys(currencies).map(currency => {
+                const data = currencies[currency];
+                const whatIfPrice = appData.whatIfPrices[currency] || appData.currentPrices[currency] || 0;
+                const whatIfValue = data.totalCoins * whatIfPrice;
+                const profitLoss = whatIfValue - data.totalInvested;
+                return { currency, data, profitLoss };
+            });
+            
+            // Sort by P/L or alphabetically based on current sort state
+            if (whatIfSortState === 'highToLow') {
+                currencyData.sort((a, b) => b.profitLoss - a.profitLoss);
+            } else if (whatIfSortState === 'lowToHigh') {
+                currencyData.sort((a, b) => a.profitLoss - b.profitLoss);
+            } else {
+                currencyData.sort((a, b) => a.currency.localeCompare(b.currency));
+            }
+            
+            currencyData.forEach(({currency, data}) => {
+                const avgPrice = data.totalInvested / data.totalCoins;
+                const whatIfPrice = appData.whatIfPrices[currency] || appData.currentPrices[currency] || 0;
+                const whatIfValue = data.totalCoins * whatIfPrice;
+                const profitLoss = whatIfValue - data.totalInvested;
+                const profitLossPercent = (profitLoss / data.totalInvested) * 100;
+                
+                totalInvested += data.totalInvested;
+                totalValue += whatIfValue;
+                
+                const card = document.createElement('div');
+                card.className = 'currency-card';
+                card.innerHTML = `
+                    <div class="currency-header">
+                        <div class="currency-name">${currency}</div>
+                    </div>
+                    <div class="currency-stats">
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Total Coins</div>
+                            <div class="currency-stat-value">${data.totalCoins.toFixed(8)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Invested</div>
+                            <div class="currency-stat-value">${formatCurrency(data.totalInvested)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Avg Buy Price</div>
+                            <div class="currency-stat-value">${formatCurrency(avgPrice)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">What-If Price</div>
+                            <div class="currency-stat-value">
+                                <input type="number" step="any" value="${whatIfPrice}" 
+                                       onchange="updateWhatIfPrice('${currency}', this.value)"
+                                       class="whatif-price-input">
+                            </div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Scenario Value</div>
+                            <div class="currency-stat-value">${formatCurrency(whatIfValue)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Potential P/L</div>
+                            <div class="currency-stat-value ${profitLoss > 0 ? 'pl-positive' : profitLoss < 0 ? 'pl-negative' : 'pl-zero'}">
+                                ${profitLoss >= 0 ? '▲' : '▼'} ${formatCurrency(profitLoss)} (${profitLossPercent.toFixed(2)}%)
+                            </div>
+                        </div>
+                    </div>
+                `;
+                currencyList.appendChild(card);
+            });
+            
+            // Update totals
+            const totalPL = totalValue - totalInvested;
+            const totalPLPercent = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
+            
+            document.getElementById('whatifTotalInvested').textContent = formatCurrency(totalInvested);
+            document.getElementById('whatifTotalValue').textContent = formatCurrency(totalValue);
+            document.getElementById('whatifTotalPL').textContent = formatCurrency(totalPL);
+            document.getElementById('whatifTotalPL').className = `stat-value ${totalPL >= 0 ? 'positive' : 'negative'}`;
+            document.getElementById('whatifTotalPLPercent').textContent = `${totalPLPercent.toFixed(2)}%`;
+            document.getElementById('whatifTotalPLPercent').className = `stat-value ${totalPL >= 0 ? 'positive' : 'negative'}`;
+        }
+        
+        /**
+         * Update currency dropdown in detailed view
+         * Also updates autocomplete datalist for add/edit transaction forms
+         */
+        function updateCurrencyDropdown() {
+            const currencies = getCurrencies();
+            const select = document.getElementById('detailCurrency');
+            const currentValue = select.value;
+            
+            select.innerHTML = '<option value="">-- Select Currency --</option>';
+            Object.keys(currencies).sort().forEach(currency => {
+                const option = document.createElement('option');
+                option.value = currency;
+                option.textContent = currency;
+                select.appendChild(option);
+            });
+            
+            select.value = currentValue;
+            
+            // Also update the datalist for autocomplete in Add Transaction form
+            updateCurrencyDatalist();
+        }
+        
+        /**
+         * Update the datalist for currency autocomplete
+         * Populates the dropdown suggestions when typing in currency field
+         */
+        function updateCurrencyDatalist() {
+            const currencies = getCurrencies();
+            const datalist = document.getElementById('currencyDatalist');
+            
+            datalist.innerHTML = '';
+            Object.keys(currencies).sort().forEach(currency => {
+                const option = document.createElement('option');
+                option.value = currency;
+                datalist.appendChild(option);
+            });
+        }
+        
+        /* ===================================
+           DETAILED VIEW & CHART
+           =================================== */
+        
+        // Chart instance for detailed view (needs to be global to destroy on refresh)
+        let detailedViewChart = null;
+        
+        /**
+         * Load and display detailed view for a selected currency
+         * Fetches live price, shows summary stats, chart, and transaction table
+         */
+        async function loadDetailedView() {
+            const currency = document.getElementById('detailCurrency').value;
+            const sellingPrice = parseFloat(document.getElementById('sellingPrice').value) || 0;
+            const content = document.getElementById('detailedViewContent');
+            
+            if (!currency) {
+                content.innerHTML = '';
+                if (detailedViewChart) {
+                    detailedViewChart.destroy();
+                    detailedViewChart = null;
+                }
+                return;
+            }
+            
+            const currencies = getCurrencies();
+            const data = currencies[currency];
+            
+            if (!data) {
+                content.innerHTML = '';
+                if (detailedViewChart) {
+                    detailedViewChart.destroy();
+                    detailedViewChart = null;
+                }
+                return;
+            }
+            
+            const avgPrice = data.totalInvested / data.totalCoins;
+            const totalValue = data.totalCoins * sellingPrice;
+            const totalPL = totalValue - data.totalInvested;
+            const totalPLPercent = (totalPL / data.totalInvested) * 100;
+            
+            // Show loading state
+            content.innerHTML = `
+                <div class="currency-card">
+                    <h3>${currency} Summary</h3>
+                    <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                        ⏳ Fetching latest price data...
+                    </p>
+                </div>
+            `;
+            
+            // Fetch current price online for the chart
+            let currentPrice = appData.currentPrices[currency] || 0;
+            let fetchingPrice = false;
+            
+            // Always try to fetch the latest price for detailed view
+            fetchingPrice = true;
+            const fetchedPrice = await fetchPrice(currency);
+            if (fetchedPrice !== null) {
+                currentPrice = fetchedPrice;
+                appData.currentPrices[currency] = currentPrice;
+                saveData(appData);
+                // Also update portfolio view with new price
+                updatePortfolioView();
+            } else if (currentPrice === 0) {
+                // If fetch failed and we have no cached price, show warning
+                showToast(`Could not fetch current price for ${currency}`, 'error');
+            }
+            
+            // Sort transactions by date
+            const sortedTransactions = [...data.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            content.innerHTML = `
+                <div class="currency-card">
+                    <h3>${currency} Summary</h3>
+                    <div class="currency-stats" style="margin-top: 15px;">
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Total Coins</div>
+                            <div class="currency-stat-value">${data.totalCoins.toFixed(8)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Total Invested</div>
+                            <div class="currency-stat-value">${formatCurrency(data.totalInvested)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Average Buy Price</div>
+                            <div class="currency-stat-value">${formatCurrency(avgPrice)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Current Price ${fetchedPrice ? '(Live)' : '(Cached)'}</div>
+                            <div class="currency-stat-value" style="color: ${fetchedPrice ? '#059669' : '#666'};">${formatCurrency(currentPrice)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Value @ Selling Price</div>
+                            <div class="currency-stat-value">${formatCurrency(totalValue)}</div>
+                        </div>
+                        <div class="currency-stat">
+                            <div class="currency-stat-label">Total P/L</div>
+                            <div class="currency-stat-value ${totalPL >= 0 ? 'positive' : 'negative'}">
+                                ${totalPL >= 0 ? '▲' : '▼'} ${formatCurrency(totalPL)} (${totalPLPercent.toFixed(2)}%)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h4 style="margin-bottom: 15px; font-size: 1.1em; text-align: center;">Price History</h4>
+                        <div style="display: flex; gap: 20px; align-items: center;">
+                            <div style="flex-shrink: 0;">
+                                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85em;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 12px; height: 12px; border-radius: 50%; background: #dc2626;"></div>
+                                        <span style="color: #666;">Transactions</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 40px; height: 0; border-top: 3px dashed #eab308;"></div>
+                                        <span style="color: #666;">Current Price</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 40px; height: 0; border-top: 3px dashed #f97316;"></div>
+                                        <span style="color: #666;">DCA Average</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 40px; height: 0; border-top: 3px dashed #10b981;"></div>
+                                        <span style="color: #666;">Target</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-wrapper" style="flex: 1;">
+                                <canvas id="detailChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 1em;">Individual Transactions</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Exchange</th>
+                                <th>Coins</th>
+                                <th>Buy Price</th>
+                                <th>Total Cost</th>
+                                <th>Value @ ${formatPrice(sellingPrice)}</th>
+                                <th>P/L</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.transactions.map(tx => {
+                                const valueAtSelling = tx.coins * sellingPrice;
+                                const txPL = valueAtSelling - tx.total;
+                                const txPLPercent = (txPL / tx.total) * 100;
+                                return `
+                                    <tr>
+                                        <td>${tx.date}</td>
+                                        <td>${tx.exchange || '-'}</td>
+                                        <td>${tx.coins.toFixed(8)}</td>
+                                        <td>${formatCurrency(tx.price)}</td>
+                                        <td>${formatCurrency(tx.total)}</td>
+                                        <td>${formatCurrency(valueAtSelling)}</td>
+                                        <td class="${txPL >= 0 ? 'positive' : 'negative'}">
+                                            ${txPL >= 0 ? '▲' : '▼'} ${formatCurrency(txPL)} (${txPLPercent.toFixed(2)}%)
+                                        </td>
+                                        <td>
+                                            <button class="edit-btn" onclick="editTransaction(${tx.id})">Edit</button>
+                                            <button class="delete-btn" onclick="deleteTransaction(${tx.id})">Delete</button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            // Create chart with the current price
+            setTimeout(() => {
+                createDetailChart(currency, sortedTransactions, currentPrice, sellingPrice);
+            }, 100);
+        }
+        
+        /**
+         * Create interactive chart for detailed view
+         * Shows transaction prices, average price, current price, and selling price
+         * @param {string} currency - Currency symbol
+         * @param {Array} transactions - Sorted array of transactions
+         * @param {number} currentPrice - Current market price
+         * @param {number} sellingPrice - User's target selling price
+         */
+        function createDetailChart(currency, transactions, currentPrice, sellingPrice) {
+            // Destroy existing chart
+            if (detailedViewChart) {
+                detailedViewChart.destroy();
+            }
+            
+            const ctx = document.getElementById('detailChart');
+            if (!ctx) return;
+            
+            // Calculate weighted average price (DCA average)
+            let totalCost = 0;
+            let totalCoins = 0;
+            transactions.forEach(tx => {
+                totalCost += tx.total;
+                totalCoins += tx.coins;
+            });
+            const weightedAvgPrice = totalCoins > 0 ? totalCost / totalCoins : 0;
+            
+            // Prepare data points with metadata
+            const transactionPoints = transactions.map(tx => ({
+                x: tx.date,
+                y: tx.price,
+                coins: tx.coins,
+                total: tx.total,
+                date: tx.date
+            }));
+            
+            // Get date range - extend beyond first and last transaction
+            const dates = transactions.map(tx => tx.date);
+            const minDate = new Date(dates[0]);
+            const maxDate = new Date(dates[dates.length - 1]);
+            
+            // Add padding dates (7 days before first, 7 days after last)
+            const paddingStart = new Date(minDate);
+            paddingStart.setDate(paddingStart.getDate() - 7);
+            const paddingEnd = new Date(maxDate);
+            paddingEnd.setDate(paddingEnd.getDate() + 7);
+            
+            const startDateStr = paddingStart.toISOString().split('T')[0];
+            const endDateStr = paddingEnd.toISOString().split('T')[0];
+            
+            // Create datasets - Transaction points with connecting line
+            const datasets = [
+                {
+                    label: 'Transactions',
+                    data: transactionPoints,
+                    borderColor: '#dc2626',
+                    backgroundColor: '#dc2626',
+                    pointRadius: 4,
+                    pointHoverRadius: 9,
+                    showLine: true, // Line connecting transactions
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.4, // Slight curve to the line
+                    datalabels: {
+                        display: false // No labels on transaction points
+                    }
+                }
+            ];
+            
+            // Add current price line (always shown)
+            if (currentPrice > 0) {
+                datasets.push({
+                    label: 'Current Price',
+                    data: [
+                        { x: startDateStr, y: currentPrice },
+                        { x: endDateStr, y: currentPrice }
+                    ],
+                    borderColor: '#44403B',      // CHANGE: Current price line color
+                    backgroundColor: '#44403B',
+                    borderWidth: 1.5,
+                    borderDash: [10, 5], // Larger dashes
+                    pointRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    datalabels: {
+                        display: function(context) {
+                            // Only display label on the first data point to show it once
+                            return context.dataIndex === 0;
+                        },
+                        anchor: 'start', // the anchor point
+                        align: -15,  // the direction of moving the text relative to the anchor point
+                        offset: 20, // Horizontal offset to shift label right
+                        formatter: () => `Current: $${currentPrice.toFixed(2)}`,
+                        color: '#44403B',
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: 4,
+                        padding: 4
+                    }
+                });
+            }
+            
+            // Add weighted average price line
+            if (weightedAvgPrice > 0) {
+                datasets.push({
+                    label: 'DCA Average',
+                    data: [
+                        { x: startDateStr, y: weightedAvgPrice },
+                        { x: endDateStr, y: weightedAvgPrice }
+                    ],
+                    borderColor: '#155DFC',
+                    backgroundColor: '#155DFC',
+                    borderWidth: 1.5,
+                    borderDash: [10, 5], // Larger dashes
+                    pointRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    datalabels: {
+                        display: function(context) {
+                            // Only display label on the first data point to show it once
+                            return context.dataIndex === 0;
+                        },
+                        anchor: 'start', // the anchor point
+                        align: -15,  // the direction of moving the text relative to the anchor point
+                        offset: 20, // Horizontal offset to shift label right
+                        formatter: () => `DCA Avg: $${weightedAvgPrice.toFixed(2)}`,
+                        color: '#155DFC',
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: 4,
+                        padding: 4
+                    }
+                });
+            }
+            
+            // Add selling price line
+            if (sellingPrice > 0) {
+                datasets.push({
+                    label: 'Target',
+                    data: [
+                        { x: startDateStr, y: sellingPrice },
+                        { x: endDateStr, y: sellingPrice }
+                    ],
+                    borderColor: '#10b981',
+                    backgroundColor: '#10b981',
+                    borderWidth: 1.5,
+                    borderDash: [10, 5], // Larger dashes
+                    pointRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    datalabels: {
+                        display: function(context) {
+                            // Only display label on the first data point to show it once
+                            return context.dataIndex === 0;
+                        },
+                        anchor: 'start', // the anchor point
+                        align: -15,  // the direction of moving the text relative to the anchor point (with angle)
+                        offset: 20, // Horizontal offset to shift label right
+                        formatter: () => `Target: $${sellingPrice.toFixed(2)}`,
+                        color: '#10b981',
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: 4,
+                        padding: 4
+                    }
+                });
+            }
+            
+            detailedViewChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: true,
+                        mode: 'point'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // Hide built-in legend, using custom HTML legend
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                title: function(context) {
+                                    // Only show custom tooltip for transaction points
+                                    if (context[0].datasetIndex === 0) {
+                                        return 'Transaction Details';
+                                    }
+                                    return context[0].dataset.label;
+                                },
+                                label: function(context) {
+                                    // For transaction points, show all details
+                                    if (context.datasetIndex === 0) {
+                                        const dataPoint = context.raw;
+                                        return [
+                                            'Date: ' + dataPoint.date,
+                                            'Buy Price: $' + dataPoint.y.toFixed(2),
+                                            'Coins Bought: ' + dataPoint.coins.toFixed(8),
+                                            'Total Cost: $' + dataPoint.total.toFixed(2),
+                                            'Current Price: $' + currentPrice.toFixed(2)
+                                        ];
+                                    }
+                                    // For other lines, just show the price
+                                    return '$' + context.parsed.y.toFixed(2);
+                                }
+                            },
+                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                            titleColor: '#1f2937',
+                            bodyColor: '#4b5563',
+                            borderColor: '#d1d5db',
+                            borderWidth: 1,
+                            padding: 14,
+                            displayColors: false,
+                            titleFont: {
+                                size: 13,
+                                weight: '600'
+                            },
+                            bodyFont: {
+                                size: 12
+                            },
+                            bodySpacing: 6
+                        },
+                        datalabels: {
+                            display: false // Hide data labels for cleaner look
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d, yyyy'
+                                }
+                            },
+                            title: {
+                                display: false // No x-axis title
+                            },
+                            grid: {
+                                display: true,
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxRotation: 0,
+                                minRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8,
+                                font: {
+                                    size: 11
+                                },
+                                color: '#6b7280'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true, // Start from 0
+                            title: {
+                                display: false // No y-axis title
+                            },
+                            grid: {
+                                display: true,
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                },
+                                font: {
+                                    size: 11
+                                },
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+        
+        /* ===================================
+           DATA IMPORT/EXPORT
+           =================================== */
+        
+        /**
+         * Export all data to a JSON file
+         * Creates a timestamped backup file for download
+         */
+        function exportData() {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '_'); // HH_MM_SS
+            const filename = `Crypto DCA ${dateStr} ${timeStr}.json`;
+            
+            const dataStr = JSON.stringify(appData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            showToast('Data exported successfully');
+        }
+        
+        /**
+         * Import data from a JSON file
+         * Replaces all current data after confirmation
+         * @param {Event} event - File input change event
+         */
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (confirm('Replace all current data with imported data?')) {
+                        appData = importedData;
+                        // Ensure all required properties exist
+                        if (!appData.whatIfPrices) appData.whatIfPrices = {};
+                        if (!appData.coinIdCache) appData.coinIdCache = {};
+                        saveData(appData);
+                        
+                        // Update all views immediately
+                        updatePortfolioView();
+                        updateWhatIfView();
+                        updateTransactionTable();
+                        updateCurrencyDropdown();
+                        updateCacheInfo();
+                        loadDetailedView(); // Update detailed view if open
+                        showToast('Data imported successfully');
+                    }
+                } catch (error) {
+                    showToast('Error importing data', 'error');
+                }
+            };
+            reader.readAsText(file);
+            // Reset file input so same file can be imported again
+            event.target.value = '';
+        }
+        
+        /**
+         * Clear all data from localStorage
+         * Requires confirmation before deleting
+         */
+        function clearAllData() {
+            if (confirm('⚠️ Delete ALL data permanently? This cannot be undone!')) {
+                localStorage.removeItem(DB_KEY);
+                appData = { transactions: [], currentPrices: {}, coinIdCache: {} };
+                
+                // Reset all views
+                updatePortfolioView();
+                updateWhatIfView();
+                updateTransactionTable();
+                updateCurrencyDropdown();
+                updateCacheInfo();
+                showToast('All data cleared');
+            }
+        }
+        
+        /* ===================================
+           BULK DELETE AND SEARCH FUNCTIONS
+           =================================== */
+        
+        /**
+         * Toggle selection of all transaction checkboxes
+         */
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.transaction-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+            
+            updateSelectedCount();
+        }
+        
+        /**
+         * Update the count of selected transactions
+         */
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.transaction-checkbox:checked');
+            const count = checkboxes.length;
+            document.getElementById('selectedCount').textContent = `${count} selected`;
+            
+            // Update "Select All" checkbox state
+            const allCheckboxes = document.querySelectorAll('.transaction-checkbox');
+            const selectAll = document.getElementById('selectAll');
+            selectAll.checked = count === allCheckboxes.length && count > 0;
+        }
+        
+        /**
+         * Delete all selected transactions
+         */
+        function deleteSelected() {
+            const checkboxes = document.querySelectorAll('.transaction-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            if (selectedIds.length === 0) {
+                showToast('No transactions selected', 'error');
+                return;
+            }
+            
+            if (!confirm(`Delete ${selectedIds.length} selected transaction(s)?`)) return;
+            
+            appData.transactions = appData.transactions.filter(t => !selectedIds.includes(t.id));
+            saveData(appData);
+            
+            updatePortfolioView();
+            updateTransactionTable();
+            showToast(`${selectedIds.length} transaction(s) deleted`);
+        }
+        
+        /**
+         * Filter transactions based on search input
+         */
+        function filterTransactions() {
+            const searchTerm = document.getElementById('transactionSearch').value.toLowerCase();
+            const tbody = document.getElementById('transactionTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                // Currency is in the 3rd column (index 2, but with checkbox it's index 3)
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    const coinName = cells[2].textContent.toLowerCase();
+                    if (coinName.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
