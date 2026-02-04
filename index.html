@@ -797,6 +797,47 @@
         }
         
         /* ===================================
+           MOBILE RESPONSIVE FIXES
+           Minimal changes to make the app work on mobile
+           =================================== */
+        @media (max-width: 768px) {
+            /* Make tabs scrollable horizontally */
+            .tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Allow tab to shrink on mobile */
+            .tab {
+                flex: 0 0 auto;
+                min-width: fit-content;
+                white-space: nowrap;
+            }
+            
+            /* Make tables scrollable */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Prevent iOS zoom on input focus */
+            .form-group input,
+            .form-group select,
+            .search-input,
+            .price-input,
+            .whatif-price-input,
+            .detailed-price-input {
+                font-size: 16px;
+            }
+        }
+        
+        /* Add table container wrapper if not exists */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* ===================================
            REFRESH STATUS (Price fetch indicator)
            =================================== */
         .refresh-status {
